@@ -12,7 +12,8 @@ const ethers = require("ethers")
 const Navbar = () => {
   const [nav, setNav] = useState(false);
   const [shadow, setShadow] = useState(false);
-  const [isConnected, setIsConnected] = useState(false)
+  const [isConnected, setIsConnected] = useState(true);
+  const [walletAddress, setWalletAddress] = useState()
   
   const links = [
     {
@@ -35,7 +36,22 @@ const Navbar = () => {
   const connectWallet=async()=>{
       const provider = new ethers.providers.Web3Provider(window.ethereum)
       let signer;
-      provider.send('eth_requestAccounts',[])
+      await provider.send('eth_requestAccounts',[])
+      const luksoNetwork = {
+        name: 'L16',
+        chainId: 2828,
+        rpcUrl: 'https://rpc.l16.lukso.network',
+        explorerUrl: 'https://explorer.execution.l16.lukso.network'
+    };
+    const luksoProvider = new ethers.providers.JsonRpcProvider(luksoNetwork.rpcUrl, luksoNetwork.chainId);
+    const network = await luksoProvider.getNetwork();
+    // console.log(network)
+    signer = provider.getSigner();
+    const wallAddress = await signer.getAddress()
+    setWalletAddress(wallAddress)
+    setIsConnected(false)
+    // const balance = await signer.getBalance();
+    // console.log(`Balance: ${ethers.utils.formatEther(balance)} LYX`);
   }
   
   useEffect(() => {
@@ -75,9 +91,13 @@ const Navbar = () => {
                 </NavLink>
               </nav>
             ))}
-            <button onClick={()=>{connectWallet();setIsConnected(true)}} className="py-[13px] px-5 lg:px-[43px] animate-text bg-gradient-to-r from-[#0879EB] to-[#B70EA6] text-white rounded-lg">
-              {isConnected?"Disconnect":'Connect Wallet'}
+            {isConnected?
+            <button onClick={()=>connectWallet()} className="py-[13px] px-5 lg:px-[43px] animate-text bg-gradient-to-r from-[#0879EB] to-[#B70EA6] text-white rounded-lg">
+              Connect Wallet
+            </button>:<button onClick={()=>{setIsConnected(true)}} className="py-[13px] px-5 lg:px-[43px] animate-text bg-gradient-to-r from-[#0879EB] to-[#B70EA6] text-white rounded-lg">
+              {walletAddress && `${walletAddress.slice(0,6)}...${walletAddress.slice(walletAddress.length-4,walletAddress.length)}`}
             </button>
+            }
           </ul>
           <div onClick={handleNav} className="block md:hidden">
             {nav ? <AiOutlineClose size={20} /> : <AiOutlineMenu size={20} />}
