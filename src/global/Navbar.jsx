@@ -1,16 +1,38 @@
-import React, { useState, useEffect } from "react";
-import { AiOutlineClose, AiOutlineMenu } from "react-icons/ai";
-import { FaDiscord, FaTwitter, FaInstagram, FaTelegram } from "react-icons/fa";
-import { NavLink } from "react-router-dom";
-import Home from "../assets/icons/DreamWave.png";
-import Staking from "../assets/icons/SteakStation.png";
-import Invootoory from "../assets/icons/DreamStore.png";
-import Economy from "../assets/icons/Economy.jpg";
-const ethers = require("ethers")
 
+import React, { useEffect, useState } from "react";
+import { AiOutlineClose, AiOutlineMenu } from "react-icons/ai";
+import { FaDiscord, FaInstagram, FaTelegram, FaTwitter } from "react-icons/fa";
+import { NavLink } from "react-router-dom";
+
+import Invootoory from "../assets/icons/DreamStore.png";
+import Home from "../assets/icons/DreamWave.png";
+import Economy from "../assets/icons/Economy.jpg";
+import Staking from "../assets/icons/SteakStation.png";
+
+import { ERC725 } from '@erc725/erc725.js';
+import erc725schema from '@erc725/erc725.js/schemas/LSP3UniversalProfileMetadata.json';
+import Web3 from 'web3';
+
+const RPC_ENDPOINT = 'https://rpc.l16.lukso.network';
+const web3 = new Web3(window.ethereum);
+const IPFS_GATEWAY = 'https://2eff.lukso.dev/ipfs/';
+
+
+
+async function fetchProfileData(address) {
+
+  const provider = new Web3.providers.HttpProvider(RPC_ENDPOINT)
+    try {
+      const profile = new ERC725(erc725schema, address, provider, { ipfsGateway: IPFS_GATEWAY});
+      return await profile.fetchData("LSP3Profile");
+    } catch (error) {
+      return console.log('This is not an ERC725 Contract');
+    }
+}
 
 const Navbar = () => {
   const [nav, setNav] = useState(false);
+  const [user, setUser] = useState({});
   const [shadow, setShadow] = useState(false);
   const [isConnected, setIsConnected] = useState(true);
   const [walletAddress, setWalletAddress] = useState()
@@ -33,25 +55,17 @@ const Navbar = () => {
     },
   ];
 
-  const connectWallet=async()=>{
-      const provider = new ethers.providers.Web3Provider(window.ethereum)
-      let signer;
-      await provider.send('eth_requestAccounts',[])
-      const luksoNetwork = {
-        name: 'L16',
-        chainId: 2828,
-        rpcUrl: 'https://rpc.l16.lukso.network',
-        explorerUrl: 'https://explorer.execution.l16.lukso.network'
-    };
-    const luksoProvider = new ethers.providers.JsonRpcProvider(luksoNetwork.rpcUrl, luksoNetwork.chainId);
-    const network = await luksoProvider.getNetwork();
-    // console.log(network)
-    signer = provider.getSigner();
-    const wallAddress = await signer.getAddress()
-    setWalletAddress(wallAddress)
+  const connectWallet= async() => {
+    const [wallet] = await web3.eth.requestAccounts();
+   
+    const user = await fetchProfileData(wallet)
+    setUser({
+      name: user?.value?.LSP3Profile?.name,
+      image: user?.value?.LSP3Profile?.profileImage[0]?.url.replace("ipfs://", IPFS_GATEWAY)
+    })
+    
+    setWalletAddress(wallet)
     setIsConnected(false)
-    // const balance = await signer.getBalance();
-    // console.log(`Balance: ${ethers.utils.formatEther(balance)} LYX`);
   }
   
   useEffect(() => {
@@ -94,9 +108,18 @@ const Navbar = () => {
             {isConnected?
             <button onClick={()=>connectWallet()} className="py-[13px] px-5 lg:px-[43px] animate-text bg-gradient-to-r from-[#0879EB] to-[#B70EA6] text-white rounded-lg">
               Connect Wallet
-            </button>:<button onClick={()=>{setIsConnected(true)}} className="py-[13px] px-5 lg:px-[43px] animate-text bg-gradient-to-r from-[#0879EB] to-[#B70EA6] text-white rounded-lg">
-              {walletAddress && `${walletAddress.slice(0,6)}...${walletAddress.slice(walletAddress.length-4,walletAddress.length)}`}
-            </button>
+            </button>:
+              (
+                <>
+                <button className="py-[13px] px-5 lg:px-[43px] animate-text bg-gradient-to-r from-[#0879EB] to-[#B70EA6] text-white rounded-lg">
+                  {user.name}
+                </button> 
+                <img src={user.image} className="w-14 rounded-full" /> 
+                <button className="py-[13px] px-5 lg:px-[43px] animate-text bg-gradient-to-r from-[#0879EB] to-[#B70EA6] text-white rounded-lg">
+                  {walletAddress && `${walletAddress.slice(0,6)}...${walletAddress.slice(walletAddress.length-4,walletAddress.length)}`}
+                </button> 
+                </>
+              )
             }
           </ul>
           <div onClick={handleNav} className="block md:hidden">
